@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Sensor Data Counters (Live - Auto-refresh)</title>
+<style>
+  body {
+    font-family: sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: #f4f4f4;
+    margin: 0;
+  }
+
+  .counter-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    padding: 30px;
+    margin: 20px;
+    text-align: center;
+    width: 250px; /* Adjust as needed */
+  }
+
+  .counter-label {
+    font-size: 1.2em;
+    color: #555;
+    margin-bottom: 10px;
+  }
+
+  .counter-value {
+    font-size: 3em; /* Large font size for counter value */
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 0;
+  }
+
+  .error-message {
+    color: red;
+    font-weight: bold;
+    margin-top: 20px;
+  }
+</style>
+</head>
+<body>
+
+  <div class="counter-container">
+    <div class="counter-label" id="sensor1-label">Sensor 1</div>
+    <div class="counter-value" id="sensor1-value">Loading...</div>
+  </div>
+
+  <div class="counter-container">
+    <div class="counter-label" id="sensor2-label">Sensor 2</div>
+    <div class="counter-value" id="sensor2-value">Loading...</div>
+  </div>
+
+  <div class="counter-container">
+    <div class="counter-label" id="total-label">Total Sensor</div>
+    <div class="counter-value" id="total-value">Loading...</div>
+  </div>
+
+  <div id="error-display" class="error-message" style="display: none;">
+    Failed to load sensor data. Please check the server and network connection.
+  </div>
+
+  <script>
+    const sensorDataUrl = "http://192.168.7.21:1234/sensor";
+    const refreshIntervalSeconds = 10; // Refresh every 10 seconds
+
+    function updateSensorData() {
+      fetch(sensorDataUrl)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then(sensorData => {
+          document.getElementById('error-display').style.display = 'none'; // Hide error message if successful
+
+          sensorData.forEach(sensor => {
+            let sensorId = sensor.sensorId;
+            let value = sensor.value;
+            let valueElementId = `sensor${sensorId}-value`;
+            let labelElementId = `sensor${sensorId}-label`;
+
+            let labelText = `Sensor ${sensorId}`; // Default label
+            if (sensorId === "total") {
+              labelText = "Total"; // Custom label for 'total'
+              valueElementId = "total-value"; // Correct id for total
+              labelElementId = "total-label"; // Correct label id for total
+            } else if (sensorId === "1") {
+                labelText = "Sensor 1";
+                valueElementId = "sensor1-value";
+                labelElementId = "sensor1-label";
+            } else if (sensorId === "2") {
+                labelText = "Sensor 2";
+                valueElementId = "sensor2-value";
+                labelElementId = "sensor2-label";
+            }
+
+            const valueElement = document.getElementById(valueElementId);
+            const labelElement = document.getElementById(labelElementId);
+
+            if (valueElement) {
+              valueElement.textContent = value;
+            }
+            if (labelElement) {
+              labelElement.textContent = labelText;
+            }
+          });
+        })
+        .catch(error => {
+          console.error("Fetch error:", error);
+          document.getElementById('error-display').style.display = 'block'; // Show error message
+          // Optionally, you could set counter values to "Error" or "--"
+          document.getElementById('sensor1-value').textContent = "Error";
+          document.getElementById('sensor2-value').textContent = "Error";
+          document.getElementById('total-value').textContent = "Error";
+        });
+    }
+
+    // Initial data load when the page loads
+    updateSensorData();
+
+    // Set up interval to refresh data every refreshIntervalSeconds
+    setInterval(updateSensorData, refreshIntervalSeconds * 1000); // setInterval takes milliseconds
+  </script>
+
+</body>
+</html>

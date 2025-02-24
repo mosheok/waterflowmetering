@@ -41,7 +41,7 @@ intervalsCounter = 0
 dayCycleHours = 0
 dayCycleMinutes = 0
 dayCycleSeconds = 0
-
+html_content = ""
 
 def load_configuration(filepath):
     """
@@ -110,9 +110,9 @@ class SimpleHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
     routes = {}  # Dictionary to store routes (path: function)
 
     @classmethod
-    def add_route(cls, path, handler_function):
-        """Decorator to add a route and its handler function."""
-        cls.routes[path] = handler_function
+    def add_route(cls, path, handler_function, content_type=None):
+        """Decorator to add a route and its handler function, and content type."""
+        cls.routes[path] = {'handler': handler_function, 'content_type': content_type}
 
     def do_GET(self):
         """Handles GET requests, including routing and parameter parsing."""
@@ -120,17 +120,23 @@ class SimpleHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
         path = parsed_url.path
         query_params = urllib.parse.parse_qs(parsed_url.query)
 
-        handler = self.routes.get(path) # Get handler function from routes
+        route_info = self.routes.get(path) # Get route info (handler and content_type)
 
-        if handler:
+        if route_info:
+            handler = route_info['handler']
+            content_type = route_info.get('content_type', 'application/json') # Default to json if not specified
+
             # Call the handler function, passing request and parameters
             response_data = handler(self, query_params)
 
             if response_data is not None:
                 self.send_response(200) # HTTP OK
-                self.send_header('Content-type', 'application/json')
+                self.send_header('Content-type', content_type) # Set content type from route info
                 self.end_headers()
-                json_response = json.dumps(response_data).encode() # Convert to JSON and bytes
+                if content_type is None or content_type == "application/json":
+                    json_response = json.dumps(response_data).encode() # Convert to JSON and bytes
+                else:
+                    json_response = response_data.encode('utf-8') # Encode string to bytes for text-based content
                 self.wfile.write(json_response)
             else:
                 self.send_error(500, "Internal Server Error: Handler returned None") # Or handle differently
@@ -138,10 +144,10 @@ class SimpleHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
         else:
             self.send_error(404, "Not Found") # Path not found
 
-def route(path):
+def route(path, content_type=None):
     """Decorator to register a function as a route handler."""
     def decorator(func):
-        SimpleHTTPRequestHandler.add_route(path, func)
+        SimpleHTTPRequestHandler.add_route(path, func, content_type)
         return func
     return decorator
 
@@ -278,17 +284,22 @@ def sensor_handler(handler, params):
     if "sensor" in params:
         sensorId = params["sensor"][0]
         if sensorId == "1":
-            return [{"sensorId": sensorId, "value": f"{firstMeter:0.2f}"}]
+            return [{"sensorId": sensorId, "value": f"{firstMeter/1000:0.3f}"}]
         elif sensorId == "2":
-            return [{"sensorId": sensorId, "value": f"{secondMeter:0.2f}"}]
+            return [{"sensorId": sensorId, "value": f"{secondMeter/1000:0.3f}"}]
 
         return {"error": "No such sensor", "sensorId": sensorId}
     
     return [
-     {"sensorId": "1", "value": f"{firstMeter:0.2f}"},
-     {"sensorId": "2", "value": f"{secondMeter:0.2f}"},
-     {"sensorId": "total", "value": f"{(secondMeter+firstMeter):0.2f}"}
+     {"sensorId": "1", "value": f"{firstMeter/1000:0.2f}"},
+     {"sensorId": "2", "value": f"{secondMeter/1000:0.2f}"},
+     {"sensorId": "total", "value": f"{(secondMeter+firstMeter)/1000:0.3f}"}
     ]
+
+@route('/sensors.html', "text/html")
+def sensors_html_handler(handler, params):
+    global html_content
+    return html_content # Return the HTML content as a string
 
 def main():
     global firstMeter
@@ -296,6 +307,10 @@ def main():
 
     load_configuration("./waterflowmeter.json")
     firstMeter = configuration["firstMeterInitial"]
+
+    global html_content
+    with open('niceSensors.html', 'r') as f:
+            html_content = f.read()
 
     # Set up GPIO
     GPIO.setmode(GPIO.BCM)
