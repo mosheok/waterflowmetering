@@ -1,0 +1,17 @@
+[Unit]
+Description=Waterflow Meter daemon
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/moshe/led
+ExecStart=/usr/bin/python3 /home/moshe/led/waterSensor.py
+User=moshe
+Group=moshe
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
