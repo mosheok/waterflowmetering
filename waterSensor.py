@@ -15,9 +15,11 @@ import urllib.parse
 #              the Broadcom SOC channel designation. The BCM channel changes as the version number changes.
 
 configuration = {
-    "PULSES_PER_LITER" : 574,
-    "firstMeterInitial" : 1673.707
+    "PULSES_PER_LITER" : 436.47799,
+    #"firstMeterInitial" : 1770830    7/7/2025 12:57
+    "firstMeterInitial" : 11414
 }
+
 
 
 # Define the GPIO pin connected to the sensor
@@ -267,7 +269,8 @@ def set_pulses_per_liter(handler, params):
         return {"error": "missing parameter ppl"}
 
     try:
-        ppl = int(params["ppl"][0])
+        # ppl = int(params["ppl"][0])
+        ppl = params["ppl"][0]
         configuration["PULSES_PER_LITER"] = ppl
         with open("./waterflowmeter.json", 'w') as f:
             json.dump(configuration, f, indent=4)
@@ -291,8 +294,8 @@ def sensor_handler(handler, params):
         return {"error": "No such sensor", "sensorId": sensorId}
     
     return [
-     {"sensorId": "1", "value": f"{firstMeter/1000:0.2f}"},
-     {"sensorId": "2", "value": f"{secondMeter/1000:0.2f}"},
+     {"sensorId": "1", "value": f"{firstMeter/1000:0.3f}"},
+     {"sensorId": "2", "value": f"{secondMeter/1000:0.3f}"},
      {"sensorId": "total", "value": f"{(secondMeter+firstMeter)/1000:0.3f}"}
     ]
 
